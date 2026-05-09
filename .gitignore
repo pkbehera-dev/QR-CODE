@@ -1,0 +1,17 @@
+# System configuration (Sensitive!)
+includes/config.php
+
+# Database setup scripts (Run once, then ignore/delete)
+setup.php
+migrate_new.php
+migrate_asset_name.php
+migrate_auth.php
+debug_db.php
+
+# IDEs
+.idea/
+.vscode/
+
+# System Files
+.DS_Store
+Thumbs.db

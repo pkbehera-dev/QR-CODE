@@ -1,0 +1,94 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth_check.php';
+
+header('Content-Type: application/json');
+$uid    = $_SESSION['user_id'];
+$method = $_SERVER['REQUEST_METHOD'];
+
+/* ── GET: list serials ──────────────────────────────── */
+if ($method === 'GET') {
+    $stmt = $pdo->prepare(
+        "SELECT s.*, p.name as product_name, p.short_name
+         FROM serials s
+         JOIN products p ON s.product_id = p.id
+         WHERE s.user_id = ? ORDER BY s.created_at DESC"
+    );
+    $stmt->execute([$uid]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['custom_fields'] = $r['custom_fields'] ? json_decode($r['custom_fields'], true) : [];
+    }
+    json_out(true, ['serials' => $rows]);
+}
+
+/* ── POST: add serial ───────────────────────────────── */
+if ($method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $pid   = (int)($input['product_id'] ?? 0);
+    $fields = $input['custom_fields'] ?? [];
+
+    if (!$pid) json_out(false, [], 'Product required.');
+
+    // Verify product ownership
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ? AND user_id = ?");
+    $stmt->execute([$pid, $uid]);
+    $product = $stmt->fetch();
+    if (!$product) json_out(false, [], 'Product not found.');
+
+    $serial_number = generate_serial_number($pdo, $uid, $pid);
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO serials (user_id, product_id, serial_number, custom_fields)
+         VALUES (?, ?, ?, ?)"
+    );
+    $stmt->execute([$uid, $pid, $serial_number, json_encode($fields)]);
+    $new_id = $pdo->lastInsertId();
+
+    json_out(true, [
+        'serial' => [
+            'id'            => $new_id,
+            'product_id'    => $pid,
+            'serial_number' => $serial_number,
+            'custom_fields' => $fields,
+            'product_name'  => $product['name'],
+            'short_name'    => $product['short_name'],
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]
+    ]);
+}
+
+/* ── PUT: update serial custom fields ── */
+if ($method === 'PUT') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $sid   = (int)($input['id'] ?? 0);
+    $fields = $input['custom_fields'] ?? [];
+
+    if (!$sid) json_out(false, [], 'Serial ID required.');
+
+    // Verify ownership
+    $chk = $pdo->prepare("SELECT id FROM serials WHERE id = ? AND user_id = ?");
+    $chk->execute([$sid, $uid]);
+    if (!$chk->fetch()) json_out(false, [], 'Not found.');
+
+    $stmt = $pdo->prepare("UPDATE serials SET custom_fields = ? WHERE id = ?");
+    $stmt->execute([json_encode($fields), $sid]);
+    
+    json_out(true, ['custom_fields' => $fields], 'Serial updated.');
+}
+
+/* ── DELETE: remove serial ──────────────────────────── */
+if ($method === 'DELETE') {
+    parse_str(file_get_contents('php://input'), $params);
+    $sid = (int)($params['id'] ?? 0);
+    if (!$sid) json_out(false, [], 'Serial ID required.');
+    $chk = $pdo->prepare("SELECT id FROM serials WHERE id = ? AND user_id = ?");
+    $chk->execute([$sid, $uid]);
+    if (!$chk->fetch()) json_out(false, [], 'Not found.');
+    $pdo->prepare("DELETE FROM serials WHERE id = ?")->execute([$sid]);
+    json_out(true, [], 'Deleted.');
+}
+
+json_out(false, [], 'Method not allowed.');
