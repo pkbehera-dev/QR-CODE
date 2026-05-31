@@ -18,12 +18,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 /* ── POST update ────────────────────────────────────── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check for file upload (logo)
+    if (isset($_FILES['logo_file'])) {
+        $file = $_FILES['logo_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['png', 'jpg', 'jpeg', 'svg', 'webp'])) {
+            json_out(false, [], 'Invalid image type.');
+        }
+        
+        $path = 'uploads/logos/';
+        if (!is_dir(__DIR__ . '/../' . $path)) mkdir(__DIR__ . '/../' . $path, 0755, true);
+        
+        $filename = 'logo_' . $uid . '_' . time() . '.' . $ext;
+        $dest = __DIR__ . '/../' . $path . $filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $dest)) {
+            $logo_url = $path . $filename;
+            $pdo->prepare("UPDATE users SET logo_url = ? WHERE id = ?")->execute([$logo_url, $uid]);
+            json_out(true, ['logo_url' => $logo_url], 'Logo uploaded successfully.');
+        } else {
+            json_out(false, [], 'Upload failed.');
+        }
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $action = $input['action'] ?? '';
 
     if ($action === 'update_prefix') {
-        $prefix = $input['serial_prefix'] ?? '';
+        $prefix = trim($input['serial_prefix'] ?? '');
+        if ($prefix !== '') {
+            $chk = $pdo->prepare("SELECT id FROM users WHERE serial_prefix = ? AND id != ?");
+            $chk->execute([$prefix, $uid]);
+            if ($chk->fetch()) {
+                json_out(false, [], 'This Global Serial Prefix is already registered by another organization. Please choose a unique prefix.');
+            }
+        }
         $pdo->prepare("UPDATE users SET serial_prefix = ? WHERE id = ?")
             ->execute([$prefix, $uid]);
-        json_out(true, [], 'Serial prefix updated.');
+        json_out(true, [], 'Serial prefix updated successfully.');
     }
 
     if ($action === 'update_heading') {
@@ -82,6 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("UPDATE users SET two_factor_enabled = ? WHERE id = ?")
             ->execute([$enabled, $uid]);
         json_out(true, [], '2FA preference updated.');
+    }
+
+    if ($action === 'update_ref') {
+        $show = ($input['show_reference'] ?? 1) ? 1 : 0;
+        $pdo->prepare("UPDATE users SET show_reference = ? WHERE id = ?")
+            ->execute([$show, $uid]);
+        json_out(true, [], 'Reference preference updated.');
     }
 
     json_out(false, [], 'Unknown action.');

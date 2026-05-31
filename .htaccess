@@ -1,0 +1,49 @@
+Options +FollowSymLinks -MultiViews -Indexes
+RewriteEngine On
+
+# Security Headers
+Header set X-XSS-Protection "1; mode=block"
+Header set X-Frame-Options "SAMEORIGIN"
+Header set X-Content-Type-Options "nosniff"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: *; frame-src 'self' https://www.google.com https://recaptcha.google.com; connect-src 'self' https://www.google.com;"
+
+# Block direct access to core system directories
+RewriteRule ^(includes)/.*$ - [F,L]
+
+# Block direct access to .php files in the request URL
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^\ ]+)\.php
+RewriteRule ^/?(.*)\.php$ - [F,L]
+
+# Prevent access to hidden files
+RewriteRule (^\.|/\.) - [F]
+
+# 1. Redirect internal .php requests to extensionless URLs
+# e.g. /login.php -> /login
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^\ ]+)\.php
+RewriteRule ^/?(.*)\.php$ $1 [L,R=301]
+
+# 2. Map extensionless URLs to .php files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Try direct .php in root (works for api/auth -> api/auth.php)
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [L]
+
+# Try in auth/
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/auth/$1.php -f
+RewriteRule ^(.*)$ auth/$1.php [L]
+
+# Try in pages/
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/pages/$1.php -f
+RewriteRule ^(.*)$ pages/$1.php [L]
+
+# Try in legal/
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/legal/$1.php -f
+RewriteRule ^(.*)$ legal/$1.php [L]
+
+# Fallback: Route unknown requests to 404 handler
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ 404.php [L]

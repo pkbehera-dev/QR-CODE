@@ -1,10 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
-// Auto-detect BASE_URL based on physical directory structure
-$doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
-$app_root = str_replace('\\', '/', realpath(__DIR__ . '/..'));
-$base_url = str_replace($doc_root, '', $app_root);
-define('BASE_URL', $base_url);
+
 
 try {
     $pdo = new PDO(

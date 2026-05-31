@@ -9,12 +9,14 @@ function generate_serial_number(PDO $pdo, int $uid, int $product_id): string {
     // Get user prefix
     $uStmt = $pdo->prepare("SELECT serial_prefix FROM users WHERE id = ?");
     $uStmt->execute([$uid]);
-    $prefix = $uStmt->fetchColumn() ?? '';
+    $prefixVal = $uStmt->fetchColumn();
+    $prefix = ($prefixVal === false || $prefixVal === null) ? '' : (string)$prefixVal;
 
     // Get product short name
     $pStmt = $pdo->prepare("SELECT short_name FROM products WHERE id = ?");
     $pStmt->execute([$product_id]);
-    $short_name = $pStmt->fetchColumn() ?? 'ITEM';
+    $shortVal = $pStmt->fetchColumn();
+    $short_name = ($shortVal === false || $shortVal === null) ? 'ITEM' : (string)$shortVal;
 
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM serials WHERE product_id = ?");
     $stmt->execute([$product_id]);
