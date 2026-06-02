@@ -32,7 +32,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; <?= date('Y') ?> QAMS — QR Asset Management System. All Rights Reserved.</p>
+            <p>&copy; <?= date('Y') ?> QAMS — QR Asset Management System. All Rights Reserved. | <a href="https://pkbehera.in" target="_blank" style="color: var(--text-secondary); transition: color 0.2s;">Developer Portfolio</a></p>
             <div class="footer-socials">
                 <a href="#" style="color: #94a3b8; margin-left: 1rem;"><i class="bi bi-twitter-x"></i></a>
                 <a href="#" style="color: #94a3b8; margin-left: 1rem;"><i class="bi bi-linkedin"></i></a>

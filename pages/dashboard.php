@@ -145,7 +145,7 @@ $has_pending = $pending_sub->fetch();
             <div class="stat-num" style="font-size: 1.5rem">Free Plan</div>
             <div class="stat-lbl">No active subscription</div>
           <?php endif; ?>
-          <a href="<?= BASE_URL ?>/price" style="display:inline-block; margin-top:0.75rem; font-size:0.8rem; color:var(--accent); font-weight:700;">Upgrade →</a>
+          <a href="<?= BASE_URL ?>/price" style="display:inline-block; margin-top:0.75rem; font-size:0.8rem; color:var(--accent); font-weight:700;">Contact Support →</a>
         </div>
       </div>
 
@@ -306,7 +306,7 @@ $has_pending = $pending_sub->fetch();
       <div class="card" style="margin-bottom:1.5rem">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
           <h2 style="font-size:1.1rem; font-weight:700">Subscription History</h2>
-          <a href="<?= BASE_URL ?>/price" class="btn btn-primary btn-sm">Upgrade Plan</a>
+          <a href="<?= BASE_URL ?>/price" class="btn btn-primary btn-sm">Contact Support</a>
         </div>
         <div class="table-wrap">
           <table>
@@ -528,7 +528,7 @@ function handleGlobalSearch(input) {
 
 function handleRefToggle(cb) {
     if (!cb.checked) {
-        if (confirm('Removing the "Developed by pradyumna" reference requires a Professional or Enterprise plan. Would you like to see our pricing?')) {
+        if (confirm('Removing the "Developed by pradyumna" reference requires contacting support. Would you like to contact support now?')) {
             window.location.href = '<?= BASE_URL ?>/price';
             cb.checked = true;
         } else {

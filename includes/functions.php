@@ -35,20 +35,31 @@ function verify_recaptcha($response) {
         'response' => $response
     ];
     
-    $options = [
-        'http' => [
-            'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
-            'method'  => 'POST',
-            'content' => http_build_query($data)
-        ]
-    ];
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    // Disable SSL verification for XAMPP / localhost testing
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
-    $context  = stream_context_create($options);
-    $result = @file_get_contents($url, false, $context);
-    if ($result === false) return false;
+    $result = curl_exec($ch);
     
+    if ($result === false) {
+        error_log("reCAPTCHA cURL Error: " . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+    
+    curl_close($ch);
     $json = json_decode($result, true);
-    return $json['success'] ?? false;
+    
+    if (!isset($json['success']) || $json['success'] !== true) {
+        error_log("reCAPTCHA API Error: " . print_r($json, true));
+        return false;
+    }
+    return true;
 }
 
 function get_scan_base_url(): string {

@@ -1,5 +1,6 @@
 # System configuration (Sensitive!)
 includes/config.php
+.env
 
 # Database setup scripts (Run once, then ignore/delete)
 setup.php

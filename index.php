@@ -139,23 +139,38 @@
 
 
     <!-- About Section -->
-    <section id="about" class="about-section">
+    <section id="about" class="about-section" style="padding: 100px 0; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(11, 15, 26, 0.5);">
         <div class="container">
-            <div class="about-grid">
+            <div class="about-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 4rem; align-items: center;">
                 <div class="about-text">
-                    <h2 style="font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem;">
-                        Smart & Simple <br><span style="color: #00ffff;">Asset Management</span>
+                    <div class="hero-badge" style="margin-bottom: 1.5rem; display: inline-flex;">
+                        <i class="bi bi-info-circle-fill"></i> About QAMS Project
+                    </div>
+                    <h2 style="font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.2;">
+                        Smart & Scalable <br><span style="color: #00ffff;">Asset Accountability</span>
                     </h2>
                     <p style="font-size: 1.15rem; line-height: 1.8; color: #cbd5e1; margin-bottom: 1.5rem;">
-                        QAMS provides a clear, reliable system to label and manage your physical items. By pairing uniquely formatted QR codes with an accessible digital catalog, tracking inventory becomes effortless.
+                        QAMS (Smart QR Asset Management System) provides a clean, reliable, and multi-tenant architecture designed to manage physical assets and hardware items. By pairing uniquely generated sequential QR codes with a comprehensive digital inventory database, tracking enterprise equipment becomes frictionless.
                     </p>
-                    <p style="font-size: 1.15rem; line-height: 1.8; color: #94a3b8;">
-                        Whether you are managing standard corporate equipment, physical components, or general catalog items, our platform helps keep everything neatly documented and organized in one central place.
+                    <p style="font-size: 1.1rem; line-height: 1.8; color: #94a3b8; margin-bottom: 1.5rem;">
+                        This platform supports custom product categories, global serialization prefixes, custodian and department mapping, and sub-component tracking. It also features a millimeter-calibrated sticker printing engine for smooth physical labeling.
                     </p>
+                    
+                    <div style="background: rgba(0, 255, 255, 0.03); border: 1px solid rgba(0, 255, 255, 0.1); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;">
+                        <h4 style="color: #00ffff; font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="bi bi-briefcase-fill"></i> Enterprise Proven Solution
+                        </h4>
+                        <p style="font-size: 0.95rem; line-height: 1.6; color: #cbd5e1; margin: 0;">
+                            QAMS was conceptualized and engineered to meet rigorous real-world hardware tracking and inventory validation demands, providing a highly optimized platform to manage IT assets, components, and custodian workflows.
+                        </p>
+                    </div>
                 </div>
-                <div class="about-visual" style="text-align: right; position: relative;">
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; background: radial-gradient(circle, rgba(0,255,255,0.05) 0%, transparent 70%); border-radius: 50%;"></div>
-                    <i class="bi bi-qr-code-scan" style="font-size: 13rem; color: #00ffff; opacity: 0.12; filter: drop-shadow(0 0 30px rgba(0,255,255,0.3)); position: relative; z-index: 2;"></i>
+                <div class="about-visual" style="text-align: center; position: relative;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; height: 320px; background: radial-gradient(circle, rgba(0,255,255,0.08) 0%, transparent 70%); border-radius: 50%;"></div>
+                    <div class="glass-card" style="padding: 3rem; display: inline-flex; flex-direction: column; align-items: center; gap: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); border-radius: 24px; position: relative; z-index: 2;">
+                        <i class="bi bi-qr-code" style="font-size: 8rem; color: #00ffff; filter: drop-shadow(0 0 20px rgba(0,255,255,0.3));"></i>
+                        <span style="font-family: monospace; font-size: 0.95rem; color: #00ffff; letter-spacing: 2px;">QAMS-SYS-ACTIVE</span>
+                    </div>
                 </div>
             </div>
         </div>

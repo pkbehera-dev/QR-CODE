@@ -32,15 +32,18 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.*)$ $1.php [L]
 
 # Try in auth/
-RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/auth/$1.php -f
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/auth/$1.php -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/auth/$1.php -f
 RewriteRule ^(.*)$ auth/$1.php [L]
 
 # Try in pages/
-RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/pages/$1.php -f
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/pages/$1.php -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/pages/$1.php -f
 RewriteRule ^(.*)$ pages/$1.php [L]
 
 # Try in legal/
-RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/legal/$1.php -f
+RewriteCond %{DOCUMENT_ROOT}/QR\ CODE/legal/$1.php -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/legal/$1.php -f
 RewriteRule ^(.*)$ legal/$1.php [L]
 
 # Fallback: Route unknown requests to 404 handler

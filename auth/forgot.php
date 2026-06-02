@@ -24,7 +24,7 @@ require_once __DIR__ . '/../includes/auth_header.php';
                 </div>
                 
                 <?php if (defined('RECAPTCHA_SITE_KEY') && RECAPTCHA_SITE_KEY): ?>
-                <div class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" data-size="invisible" data-callback="onRecaptchaSuccess"></div>
+                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
                 <?php endif; ?>
                 
                 <button type="submit" class="btn btn-cyan btn-block" id="forgot-btn" style="margin-top:1rem;">Send Reset Link</button>
@@ -37,7 +37,7 @@ require_once __DIR__ . '/../includes/auth_header.php';
     </div>
 </div>
 
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script src="https://www.google.com/recaptcha/enterprise.js?render=<?= RECAPTCHA_SITE_KEY ?>" async defer></script>
 <script>
 document.getElementById('forgot-form').addEventListener('submit', e => {
   e.preventDefault();
@@ -45,18 +45,30 @@ document.getElementById('forgot-form').addEventListener('submit', e => {
   btn.disabled = true; btn.textContent = 'Verifying…';
   
   const siteKey = '<?= defined("RECAPTCHA_SITE_KEY") ? RECAPTCHA_SITE_KEY : "" ?>';
-  if (siteKey && typeof grecaptcha !== 'undefined') grecaptcha.execute();
-  else processForgot('');
+  if (siteKey && typeof grecaptcha !== 'undefined' && grecaptcha.enterprise) {
+      grecaptcha.enterprise.ready(async () => {
+          try {
+              const token = await grecaptcha.enterprise.execute(siteKey, {action: 'FORGOT_PASSWORD'});
+              processForgot(token);
+          } catch (err) {
+              console.error("reCAPTCHA Enterprise execution error:", err);
+              processForgot('');
+          }
+      });
+  } else {
+      processForgot('');
+  }
 });
-
-function onRecaptchaSuccess(token) { processForgot(token); }
 
 async function processForgot(token) {
   const form = document.getElementById('forgot-form');
   const btn = document.getElementById('forgot-btn');
   
+  if (token) {
+      document.getElementById('g-recaptcha-response').value = token;
+  }
+  
   const fd = new FormData(form);
-  if (token) fd.append('g-recaptcha-response', token);
   
   try {
     const res = await fetch('<?= BASE_URL ?>/api/auth?action=forgot_pw', {method:'POST', body:fd});
@@ -66,11 +78,9 @@ async function processForgot(token) {
       form.reset();
     } else {
       showToast(data.message, 'error');
-      if (typeof grecaptcha !== 'undefined') grecaptcha.reset();
     }
   } catch(err) {
     showToast('Network error.', 'error');
-    if (typeof grecaptcha !== 'undefined') grecaptcha.reset();
   }
   btn.disabled = false; btn.textContent = 'Send Reset Link';
 }

@@ -40,6 +40,7 @@ $is_dark_page = in_array($current_page, ['index.php', 'price.php', 'terms.php', 
         <nav class="nav-links" id="nav-links">
             <a href="<?= BASE_URL ?>/">Home</a>
             <a href="<?= BASE_URL ?>/#features">Features</a>
+            <a href="<?= BASE_URL ?>/price">Support</a>
             <a href="<?= BASE_URL ?>/#about">About</a>
             <a href="<?= BASE_URL ?>/#contact">Contact</a>
             <?php if ($is_logged_in): ?>
