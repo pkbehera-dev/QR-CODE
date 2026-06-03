@@ -103,13 +103,33 @@ $u_count = $current_serials_count->fetchColumn();
           <div class="stat-num" id="stat-serials">…</div>
           <div class="stat-lbl">Total Serials</div>
         </div>
-        <div class="card stat-card">
-          <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
-          <div class="stat-num"><?= $u['serial_limit'] >= 9999 ? 'Unlimited' : $u['serial_limit'] ?></div>
-          <div class="stat-lbl">License Limit</div>
-          <div class="progress-container" style="margin-top:1rem">
-            <?php $perc = ($u['serial_limit'] > 0) ? ($u_count / $u['serial_limit']) * 100 : 100; ?>
-            <div class="progress-bar" style="width: <?= min(100, $perc) ?>%"></div>
+        <?php 
+          $limit = (int)$u['serial_limit'];
+          $perc = ($limit > 0) ? ($u_count / $limit) * 100 : 0;
+          $bar_color = '#10b981'; // Green (low usage)
+          $bg_border = '';
+          if ($perc >= 90) {
+              $bar_color = '#ef4444'; // Red (high usage)
+              $bg_border = 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);';
+          } elseif ($perc >= 70) {
+              $bar_color = '#f59e0b'; // Orange/Yellow (medium usage)
+              $bg_border = 'border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);';
+          }
+        ?>
+        <div class="card stat-card" style="<?= $bg_border ?> display: flex; align-items: center; gap: 1.25rem;">
+          <div class="stat-icon" style="color: <?= $bar_color ?>; background: <?= $bar_color ?>1a; flex-shrink: 0;"><i class="bi bi-shield-check"></i></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+              <span class="stat-num" style="margin: 0; font-size: 1.75rem;"><?= $limit >= 9999 ? 'Unlimited' : $limit ?></span>
+              <span class="stat-lbl" style="margin: 0; font-size: 0.75rem; text-transform: none; font-weight: 700; color: var(--text-primary);"><?= $u_count ?> / <?= $limit ?> used</span>
+            </div>
+            <div class="progress-container" style="margin: 6px 0; background: rgba(0,0,0,0.05); height: 6px; border-radius: 3px; overflow: hidden; width: 100%;">
+              <div class="progress-bar" style="width: <?= min(100, $perc) ?>%; background: <?= $bar_color ?>; height: 100%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <span class="stat-lbl" style="font-size: 0.75rem; color: var(--text-secondary);">License Limit</span>
+              <a href="<?= BASE_URL ?>/price" style="font-size: 0.75rem; color: <?= $bar_color ?>; font-weight: 800; text-decoration: none; white-space: nowrap;">Upgrade / Support →</a>
+            </div>
           </div>
         </div>
       </div>
