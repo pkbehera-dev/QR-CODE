@@ -52,7 +52,6 @@ const TAB_LOADERS = {
   products: renderProductTable,
   create:   renderCreateProducts,
   print:    renderPrintGrid,
-  billing:  loadBillingHistory,
   settings: () => {}
 };
 
@@ -678,38 +677,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-async function loadBillingHistory() {
-  const tbody = document.getElementById('billing-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-secondary)">Loading history...</td></tr>';
-  
-  try {
-    const res = await fetch(BASE_URL + '/api/subscriptions');
-    const data = await res.json();
-    if (data.success && data.subscriptions && data.subscriptions.length) {
-      tbody.innerHTML = '';
-      data.subscriptions.forEach(s => {
-        const date = s.created_at ? s.created_at.slice(0, 10) : '—';
-        const statusBadge = {
-          pending: '<span style="color:#f59e0b; font-weight:700">⏳ Pending</span>',
-          active: '<span style="color:#10b981; font-weight:700">✔ Active</span>',
-          expired: '<span style="color:#ef4444; font-weight:700">✘ Expired</span>',
-          rejected: '<span style="color:#ef4444; font-weight:700">✘ Rejected</span>'
-        }[s.status] || s.status;
-
-        tbody.innerHTML += `<tr>
-          <td>${date}</td>
-          <td><b>${s.asset_limit} Assets</b></td>
-          <td style="text-transform:uppercase">${s.billing_cycle}</td>
-          <td>₹${parseFloat(s.amount).toFixed(0)}</td>
-          <td><code style="font-size:0.8rem">${s.transaction_id || '—'}</code></td>
-          <td>${statusBadge}</td>
-        </tr>`;
-      });
-    } else {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-secondary)">No billing history found.</td></tr>';
-    }
-  } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#ef4444">Error loading history.</td></tr>';
-  }
-}
