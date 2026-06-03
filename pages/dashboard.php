@@ -5,17 +5,12 @@ $user_role = $_SESSION['role'];
 if ($user_role === 'admin') { header('Location: ' . BASE_URL . '/admin/'); exit; }
 
 // Get user details for settings prefill
-$stmt = $pdo->prepare("SELECT email, role, serial_prefix, logo_url, company_heading, company_subheading, two_factor_enabled, serial_limit, show_reference, subscription_expires FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT email, role, serial_prefix, logo_url, company_heading, company_subheading, two_factor_enabled, serial_limit, show_reference FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $u = $stmt->fetch();
 $current_serials_count = $pdo->prepare("SELECT COUNT(*) FROM serials WHERE user_id = ?");
 $current_serials_count->execute([$_SESSION['user_id']]);
 $u_count = $current_serials_count->fetchColumn();
-
-// Check for pending subscription
-$pending_sub = $pdo->prepare("SELECT id, created_at FROM subscriptions WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1");
-$pending_sub->execute([$_SESSION['user_id']]);
-$has_pending = $pending_sub->fetch();
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,7 +40,6 @@ $has_pending = $pending_sub->fetch();
         <li><button class="tab-btn" data-tab="allserials"><i class="bi bi-list-columns-reverse"></i> All Serials</button></li>
         <li><button class="tab-btn" data-tab="create"><i class="bi bi-plus-circle-fill"></i> Create Serial</button></li>
         <li><button class="tab-btn" data-tab="print"><i class="bi bi-printer-fill"></i> Print / QR</button></li>
-        <li><button class="tab-btn" data-tab="billing"><i class="bi bi-credit-card-fill"></i> Billing</button></li>
         <li><button class="tab-btn" data-tab="settings"><i class="bi bi-gear-fill"></i> Settings</button></li>
       </ul>
     </nav>
@@ -109,43 +103,34 @@ $has_pending = $pending_sub->fetch();
           <div class="stat-num" id="stat-serials">…</div>
           <div class="stat-lbl">Total Serials</div>
         </div>
-        <div class="card stat-card">
-          <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
-          <div class="stat-num"><?= $u['serial_limit'] >= 9999 ? 'Unlimited' : $u['serial_limit'] ?></div>
-          <div class="stat-lbl">License Limit</div>
-          <div class="progress-container" style="margin-top:1rem">
-            <?php $perc = ($u['serial_limit'] > 0) ? ($u_count / $u['serial_limit']) * 100 : 100; ?>
-            <div class="progress-bar" style="width: <?= min(100, $perc) ?>%"></div>
+        <?php 
+          $limit = (int)$u['serial_limit'];
+          $perc = ($limit > 0) ? ($u_count / $limit) * 100 : 0;
+          $bar_color = '#10b981'; // Green (low usage)
+          $bg_border = '';
+          if ($perc >= 90) {
+              $bar_color = '#ef4444'; // Red (high usage)
+              $bg_border = 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);';
+          } elseif ($perc >= 70) {
+              $bar_color = '#f59e0b'; // Orange/Yellow (medium usage)
+              $bg_border = 'border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);';
+          }
+        ?>
+        <div class="card stat-card" style="<?= $bg_border ?> display: flex; align-items: center; gap: 1.25rem;">
+          <div class="stat-icon" style="color: <?= $bar_color ?>; background: <?= $bar_color ?>1a; flex-shrink: 0;"><i class="bi bi-shield-check"></i></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+              <span class="stat-num" style="margin: 0; font-size: 1.75rem;"><?= $limit >= 9999 ? 'Unlimited' : $limit ?></span>
+              <span class="stat-lbl" style="margin: 0; font-size: 0.75rem; text-transform: none; font-weight: 700; color: var(--text-primary);"><?= $u_count ?> / <?= $limit ?> used</span>
+            </div>
+            <div class="progress-container" style="margin: 6px 0; background: rgba(0,0,0,0.05); height: 6px; border-radius: 3px; overflow: hidden; width: 100%;">
+              <div class="progress-bar" style="width: <?= min(100, $perc) ?>%; background: <?= $bar_color ?>; height: 100%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <span class="stat-lbl" style="font-size: 0.75rem; color: var(--text-secondary);">License Limit</span>
+              <a href="<?= BASE_URL ?>/price" style="font-size: 0.75rem; color: <?= $bar_color ?>; font-weight: 800; text-decoration: none; white-space: nowrap;">Upgrade / Support →</a>
+            </div>
           </div>
-        </div>
-        <div class="card stat-card">
-          <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
-          <?php
-            $sub_exp = $u['subscription_expires'] ?? null;
-            if ($sub_exp) {
-                $exp_ts = strtotime($sub_exp);
-                $days_left = max(0, (int)ceil(($exp_ts - time()) / 86400));
-                $is_expired = $exp_ts < time();
-            } else {
-                $days_left = 0;
-                $is_expired = false;
-            }
-          ?>
-          <?php if ($has_pending): ?>
-            <div class="stat-num" style="color: #f59e0b; font-size: 1.5rem;">Pending</div>
-            <div class="stat-lbl">Verification in progress</div>
-            <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px;">Submitted <?= date('d M', strtotime($has_pending['created_at'])) ?></p>
-          <?php elseif ($sub_exp && !$is_expired): ?>
-            <div class="stat-num" style="color: <?= $days_left <= 7 ? '#ef4444' : ($days_left <= 30 ? '#f59e0b' : 'var(--accent)') ?>"><?= $days_left ?>d</div>
-            <div class="stat-lbl">Plan Expires <?= date('d M Y', $exp_ts) ?></div>
-          <?php elseif ($sub_exp && $is_expired): ?>
-            <div class="stat-num" style="color: #ef4444">Expired</div>
-            <div class="stat-lbl"><?= date('d M Y', $exp_ts) ?></div>
-          <?php else: ?>
-            <div class="stat-num" style="font-size: 1.5rem">Free Plan</div>
-            <div class="stat-lbl">No active subscription</div>
-          <?php endif; ?>
-          <a href="<?= BASE_URL ?>/price" style="display:inline-block; margin-top:0.75rem; font-size:0.8rem; color:var(--accent); font-weight:700;">Contact Support →</a>
         </div>
       </div>
 
@@ -302,24 +287,7 @@ $has_pending = $pending_sub->fetch();
     </section>
 
     <!-- BILLING / HISTORY -->
-    <section id="tab-billing" class="tab-content" role="tabpanel">
-      <div class="card" style="margin-bottom:1.5rem">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-          <h2 style="font-size:1.1rem; font-weight:700">Subscription History</h2>
-          <a href="<?= BASE_URL ?>/price" class="btn btn-primary btn-sm">Contact Support</a>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Date</th><th>Plan</th><th>Cycle</th><th>Amount</th><th>Txn ID</th><th>Status</th></tr>
-            </thead>
-            <tbody id="billing-tbody">
-              <tr><td colspan="6" style="text-align:center; padding:2rem; color:#666">Loading history...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+
 
     <!-- SETTINGS -->
     <section id="tab-settings" class="tab-content" role="tabpanel">

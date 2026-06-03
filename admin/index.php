@@ -102,23 +102,7 @@ foreach ($stmt->fetchAll() as $r) $settings[$r['setting_key']] = $r['setting_val
             </div>
           </div>
 
-          <!-- SUBSCRIPTION REQUESTS -->
-          <div class="card premium-card">
-            <div class="card-header">
-              <h2>Subscription Requests</h2>
-              <button class="btn btn-ghost btn-sm" onclick="loadSubscriptions()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>User</th><th>Email</th><th>Assets</th><th>Cycle</th><th>Amount</th><th>Txn ID</th><th>Proof</th><th>Status</th><th>Action</th></tr>
-                </thead>
-                <tbody id="sub-tbody">
-                  <tr><td colspan="9" style="text-align:center; padding:3rem; color:#888;">Loading subscriptions...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+
         </div>
 
         <!-- USERS SECTION -->
@@ -249,7 +233,6 @@ function showSection(id) {
   }
   
   // Load specific data if needed
-  if (id === 'overview') loadSubscriptions();
 }
 
 function toggleSidebar() {
@@ -294,64 +277,6 @@ async function updateUserBranding(id, checked) {
 }
 
 
-// Subscription management
-async function loadSubscriptions() {
-  const tbody = document.getElementById('sub-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:3rem; color:#888;">Loading subscriptions...</td></tr>';
-
-  let hasData = false;
-  let html = '';
-
-  for (const status of ['pending', 'active', 'expired', 'rejected']) {
-    const r = await fetch(BASE + `/api/subscriptions?admin=1&status=${status}`);
-    const d = await r.json();
-    
-    if (d.subscriptions && d.subscriptions.length) {
-      hasData = true;
-      d.subscriptions.forEach(s => {
-        let statusBadge = '';
-        if(s.status === 'pending') statusBadge = '<span class="status-badge status-yellow"><i class="bi bi-hourglass-split"></i> Pending</span>';
-        else if(s.status === 'active') statusBadge = '<span class="status-badge status-green"><i class="bi bi-check-circle-fill"></i> Active</span>';
-        else statusBadge = `<span class="status-badge status-red"><i class="bi bi-x-circle-fill"></i> ${s.status.charAt(0).toUpperCase() + s.status.slice(1)}</span>`;
-
-        const actions = s.status === 'pending' ? `
-          <div style="display:flex; gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="handleSub(${s.id}, 'approve')" style="padding: 4px 8px;"><i class="bi bi-check2"></i></button>
-            <button class="btn btn-danger btn-sm" onclick="handleSub(${s.id}, 'reject')" style="padding: 4px 8px;"><i class="bi bi-x-lg"></i></button>
-          </div>
-        ` : '<span style="color:#cbd5e1;">—</span>';
-
-        const txnId = s.transaction_id ? `<code class="code-badge">${s.transaction_id}</code>` : '<span style="color:#aaa">—</span>';
-        const proof = s.payment_proof ? `<a href="${BASE}/${s.payment_proof}" target="_blank" class="proof-link"><i class="bi bi-image"></i> View</a>` : '<span style="color:#aaa">—</span>';
-
-        html += `<tr>
-          <td style="font-weight:600;">${s.user_name || '—'}</td>
-          <td style="font-size:0.85rem; color:var(--text-secondary);">${s.user_email || '—'}</td>
-          <td><b>${s.asset_limit}</b></td>
-          <td><span class="badge badge-cycle">${s.billing_cycle}</span></td>
-          <td style="font-weight:800; color:var(--text-primary);">₹${parseFloat(s.amount).toFixed(0)}</td>
-          <td>${txnId}</td>
-          <td>${proof}</td>
-          <td>${statusBadge}</td>
-          <td>${actions}</td>
-        </tr>`;
-      });
-    }
-  }
-
-  tbody.innerHTML = hasData ? html : '<tr><td colspan="9" style="text-align:center; padding:3rem; color:#888;">No subscription requests found.</td></tr>';
-}
-
-async function handleSub(id, action) {
-  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this subscription?`)) return;
-  const r = await fetch(BASE + '/api/subscriptions', {
-    method: 'PUT', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ id, action })
-  });
-  const d = await r.json();
-  if (d.success) { showToast(d.message); loadSubscriptions(); }
-  else showToast(d.message, 'error');
-}
 
 // Initial initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -361,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
       overview.classList.add('active');
       setTimeout(() => overview.classList.add('fade-in'), 50);
   }
-  loadSubscriptions();
 });
 </script>
 </body>
