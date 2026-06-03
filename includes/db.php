@@ -13,6 +13,10 @@ try {
         ]
     );
 } catch (PDOException $e) {
+    error_log("Database connection failed: " . $e->getMessage());
     http_response_code(500);
-    die(json_encode(['success' => false, 'message' => 'DB connection failed: ' . $e->getMessage()]));
+    $msg = (defined('APP_ENV') && APP_ENV === 'production') 
+        ? 'Database connection failed. Please try again later.' 
+        : 'DB connection failed: ' . $e->getMessage();
+    die(json_encode(['success' => false, 'message' => $msg]));
 }

@@ -19,6 +19,16 @@ if (!in_array($ext, $allowed)) {
     json_out(false, [], 'Invalid file type. Allowed: ' . implode(', ', $allowed));
 }
 
+// Validate actual file MIME type server-side
+$finfo = finfo_open(FILEINFO_MIME_TYPE);
+$mime = finfo_file($finfo, $file['tmp_name']);
+finfo_close($finfo);
+
+$allowed_mimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+if (!in_array($mime, $allowed_mimes)) {
+    json_out(false, [], 'Invalid file content type. Allowed: ' . implode(', ', $allowed));
+}
+
 if ($file['size'] > 2 * 1024 * 1024) {
     json_out(false, [], 'File too large. Max 2MB.');
 }
