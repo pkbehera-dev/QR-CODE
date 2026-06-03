@@ -54,13 +54,26 @@ if ($method === 'POST') {
         $max_size = 5 * 1024 * 1024; // 5MB
         if ($file['size'] > $max_size) json_out(false, [], 'File too large. Max 5MB.');
 
-        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!in_array($file['type'], $allowed)) json_out(false, [], 'Invalid file type. Use PNG, JPG, or WebP.');
+        // Validate client-side extension
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!in_array($ext, $allowed_exts)) {
+            json_out(false, [], 'Invalid file extension. Use PNG, JPG, or WebP.');
+        }
+
+        // Validate actual file MIME type server-side
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!in_array($mime, $allowed_mimes)) {
+            json_out(false, [], 'Invalid file content type. Use PNG, JPG, or WebP.');
+        }
 
         $upload_dir = __DIR__ . '/../uploads/proofs/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = 'proof_' . $uid . '_' . time() . '.' . $ext;
         $dest = $upload_dir . $filename;
 

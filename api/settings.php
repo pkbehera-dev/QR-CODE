@@ -26,6 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             json_out(false, [], 'Invalid image type.');
         }
         
+        // Validate actual file MIME type server-side
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/svg'];
+        if (!in_array($mime, $allowed_mimes)) {
+            json_out(false, [], 'Invalid image content type.');
+        }
+        
         $path = 'uploads/logos/';
         if (!is_dir(__DIR__ . '/../' . $path)) mkdir(__DIR__ . '/../' . $path, 0755, true);
         

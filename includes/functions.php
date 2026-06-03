@@ -41,8 +41,9 @@ function verify_recaptcha($response) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    // Disable SSL verification for XAMPP / localhost testing
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    // Verify SSL peer in production, bypass on local dev if configured
+    $verifySsl = !(defined('APP_ENV') && APP_ENV === 'local');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verifySsl);
     
     $result = curl_exec($ch);
     
