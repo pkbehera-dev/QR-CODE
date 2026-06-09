@@ -219,6 +219,8 @@ tr:hover td { background: #f8fafc; }
 input:checked + .slider { background-color: var(--accent); }
 input:checked + .slider:before { transform: translateX(20px); }
 
+
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
   .sidebar { transform: translateX(-100%); }

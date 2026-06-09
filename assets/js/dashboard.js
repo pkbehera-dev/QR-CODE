@@ -18,6 +18,66 @@ const escHtml = (s) => {
     return div.innerHTML;
 };
 
+function getStatusBadge(status) {
+    status = status || 'In Stock';
+    let bg = 'rgba(0,0,0,0.05)', color = 'var(--text-primary)';
+    if (status === 'Active') { bg = '#dcfce7'; color = '#15803d'; }
+    else if (status === 'Breakdown') { bg = '#fee2e2'; color = '#b91c1c'; }
+    else if (status === 'Under Repair') { bg = '#fef3c7'; color = '#d97706'; }
+    else if (status === 'Retired') { bg = '#f1f5f9'; color = '#475569'; }
+    else if (status === 'In Stock') { bg = '#dbeafe'; color = '#1d4ed8'; }
+    return `<span class="badge" style="background:${bg}; color:${color}; font-weight:800; font-size:0.75rem; text-transform:uppercase">${escHtml(status)}</span>`;
+}
+window.getStatusBadge = getStatusBadge;
+
+function updateCreateCustodianVisibility() {
+  const pId = document.getElementById('create-parent')?.value || '';
+  const status = document.getElementById('create-status')?.value || 'In Stock';
+  const createCustodianSec = document.getElementById('create-custodian-section');
+  if (createCustodianSec) {
+      createCustodianSec.style.display = (!pId && status === 'Active') ? 'block' : 'none';
+  }
+}
+window.updateCreateCustodianVisibility = updateCreateCustodianVisibility;
+
+function updateEditCustodianVisibility() {
+  const pId = document.getElementById('edit-parent')?.value || '';
+  const status = document.getElementById('edit-status')?.value || 'In Stock';
+  const editCustodianSec = document.getElementById('edit-custodian-section');
+  if (editCustodianSec) {
+      editCustodianSec.style.display = (!pId && status === 'Active') ? 'block' : 'none';
+  }
+}
+window.updateEditCustodianVisibility = updateEditCustodianVisibility;
+
+function updateEditMaintenanceNoteVisibility() {
+  const status = document.getElementById('edit-status')?.value || 'In Stock';
+  const section = document.getElementById('edit-maintenance-note-section');
+  const label = document.getElementById('edit-maintenance-note-label');
+  const textarea = document.getElementById('edit-maintenance-note');
+  if (section && label && textarea) {
+      if (status === 'In Stock' || status === 'Active') {
+          section.style.display = 'none';
+      } else {
+          section.style.display = 'block';
+          if (status === 'Breakdown') {
+              label.textContent = 'Breakdown Reason (Optional)';
+              textarea.placeholder = 'Describe why it broke down (e.g. power surge, physical damage)...';
+          } else if (status === 'Under Repair') {
+              label.textContent = 'What Repaired / Repair Details (Optional)';
+              textarea.placeholder = 'Describe what is being repaired or what was replaced...';
+          } else if (status === 'Retired') {
+              label.textContent = 'Why Retired (Optional)';
+              textarea.placeholder = 'Describe why this asset is being retired...';
+          } else {
+              label.textContent = 'Maintenance / Repair Note (Optional)';
+              textarea.placeholder = 'Describe what was repaired or updated...';
+          }
+      }
+  }
+}
+window.updateEditMaintenanceNoteVisibility = updateEditMaintenanceNoteVisibility;
+
 async function api(endpoint, method='GET', body=null) {
   const cleanEndpoint = endpoint.replace(/\.php(\?|$)/, '$1');
   const opts = { method, headers: {} };
@@ -32,10 +92,29 @@ async function api(endpoint, method='GET', body=null) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   ICON PREVIEW UTILITY
+═══════════════════════════════════════════════════════ */
+function updateIconPreview(val) {
+  const preview = document.getElementById('icon-preview-i');
+  if (preview) {
+    const iconClass = (val || '').trim();
+    preview.className = 'bi ' + (iconClass ? iconClass : 'bi-box-seam');
+  }
+}
+window.updateIconPreview = updateIconPreview;
+
+/* ═══════════════════════════════════════════════════════
    MODAL CONTROLS
 ═══════════════════════════════════════════════════════ */
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+
+function getProductIcon(productId) {
+  const p = State.products.find(x => String(x.id) === String(productId));
+  return (p && p.icon) ? p.icon : 'bi-box-seam';
+}
+window.getProductIcon = getProductIcon;
 
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
@@ -48,10 +127,11 @@ function toggleSidebar() {
 
 const TAB_LOADERS = {
   overview: renderOverview,
-  allserials: renderAllSerials,
+  assetlist: renderAssetList,
   products: renderProductTable,
   create:   renderCreateProducts,
   print:    renderPrintGrid,
+  maintenance: renderMaintenanceLogs,
   settings: () => {}
 };
 
@@ -61,16 +141,16 @@ function renderOverview() {
 
   const tbody = document.getElementById('recent-body');
   if (!State.serials.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary)">No serials generated yet.</td></tr>'; return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary)">No assets generated yet.</td></tr>'; return;
   }
-  
   tbody.innerHTML = State.serials.slice(0, 10).map(s => {
     const cf = s.custom_fields || {};
     const userText = cf.user || '—';
+    const pIcon = s.product_icon || getProductIcon(s.product_id);
     return `<tr>
       <td><span style="font-family:monospace; font-weight:700; color:var(--accent)">${escHtml(s.serial_number)}</span></td>
       <td>${escHtml(userText)}</td>
-      <td><span class="btn btn-ghost btn-sm" style="pointer-events:none">${escHtml(s.product_name)}</span></td>
+      <td><span class="btn btn-ghost btn-sm" style="pointer-events:none; display:inline-flex; align-items:center; gap:6px"><i class="bi ${pIcon}" style="font-size:1rem; color:var(--accent)"></i> ${escHtml(s.product_name)}</span></td>
       <td style="color:var(--text-secondary)">${escHtml(s.created_at ? s.created_at.slice(0,10) : '—')}</td>
       <td>
          <div style="display:flex; gap:0.5rem">
@@ -82,17 +162,19 @@ function renderOverview() {
   }).join('');
 }
 
-function renderAllSerials() {
-  const tbody = document.getElementById('all-serials-tbody');
-  const search = document.getElementById('all-search').value.toLowerCase();
-  const prodFilter = document.getElementById('all-filter-prod').value;
 
-  const filterSel = document.getElementById('all-filter-prod');
+
+function renderAssetList() {
+  const tbody = document.getElementById('assetlist-tbody');
+  const search = document.getElementById('assetlist-search').value.toLowerCase();
+  const prodFilter = document.getElementById('assetlist-filter-prod').value;
+  
+  const filterSel = document.getElementById('assetlist-filter-prod');
   const currentVal = filterSel.value;
-  filterSel.innerHTML = '<option value="">All Products</option>' +
+  filterSel.innerHTML = '<option value="">All Asset Types</option>' +
     State.products.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
   filterSel.value = currentVal;
-
+  
   let list = State.serials;
   if (prodFilter) list = list.filter(s => String(s.product_id) === prodFilter);
   if (search) {
@@ -103,20 +185,23 @@ function renderAllSerials() {
       return sn.includes(search) || prod.includes(search) || fields.includes(search);
     });
   }
-
+  
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:4rem; color:var(--text-secondary)">${State.serials.length ? 'No matching serials found.' : 'No serials generated yet.'}</td></tr>`; return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:4rem; color:var(--text-secondary)">No assets found.</td></tr>';
+    return;
   }
-
+  
   tbody.innerHTML = list.map(s => {
     const cf = s.custom_fields || {};
-    const userText = cf.user ? `<strong>${cf.user}</strong><br><small style="color:var(--text-secondary)">${cf.department || 'No Dept'}</small>` : '—';
-    const itemsCount = cf.items ? cf.items.length : 0;
+    const userText = cf.user ? `<strong>${cf.user}</strong>` : '<span style="color:var(--text-secondary); background:rgba(0,0,0,0.05); padding:2px 8px; border-radius:6px; font-size:0.75rem;">In Stock (Unassigned)</span>';
+    const parentText = s.parent_serial_number ? `<span style="font-family:monospace; font-weight:700; color:var(--accent)">${escHtml(s.parent_serial_number)}</span>` : '—';
+    const pIcon = s.product_icon || getProductIcon(s.product_id);
     return `<tr>
       <td><span style="font-family:monospace; font-weight:800; color:var(--accent)">${escHtml(s.serial_number)}</span></td>
+      <td><span class="btn btn-ghost btn-sm" style="pointer-events:none; display:inline-flex; align-items:center; gap:6px"><i class="bi ${pIcon}" style="font-size:1rem; color:var(--accent)"></i> ${escHtml(s.product_name)}</span></td>
+      <td>${parentText}</td>
       <td>${userText}</td>
-      <td><span class="btn btn-ghost btn-sm" style="pointer-events:none">${escHtml(s.product_name)}</span></td>
-      <td><span style="font-size:0.75rem; color:var(--text-secondary)">${itemsCount} Component(s)</span></td>
+      <td>${getStatusBadge(s.status)}</td>
       <td style="color:var(--text-secondary)">${escHtml(s.created_at ? s.created_at.slice(0,10) : '—')}</td>
       <td>
         <div style="display:flex; gap:0.5rem">
@@ -128,10 +213,65 @@ function renderAllSerials() {
     </tr>`;
   }).join('');
 }
+window.renderAssetList = renderAssetList;
+
+function resetAssetListFilters() {
+    document.getElementById('assetlist-search').value = '';
+    document.getElementById('assetlist-filter-prod').value = '';
+    renderAssetList();
+}
+window.resetAssetListFilters = resetAssetListFilters;
+
+async function renderMaintenanceLogs() {
+  const tbody = document.getElementById('maintenance-tbody');
+  if (!tbody) return;
+  
+  const search = document.getElementById('maintenance-search').value;
+  const status = document.getElementById('maintenance-filter-status').value;
+  
+  const d = await api(`api/maintenance?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`);
+  
+  if (d.success && d.logs && d.logs.length > 0) {
+      tbody.innerHTML = d.logs.map(log => {
+          return `<tr>
+              <td><span style="font-family:monospace; font-weight:800; color:var(--accent)">${escHtml(log.serial_number)}</span></td>
+              <td><span class="btn btn-ghost btn-sm" style="pointer-events:none">${escHtml(log.product_name)}</span></td>
+              <td><strong>${escHtml(log.custodian)}</strong></td>
+              <td>${getStatusBadge(log.status)}</td>
+              <td style="max-width:300px; word-break:break-word">${escHtml(log.note)}</td>
+              <td style="color:var(--text-secondary)">${escHtml(log.created_at ? log.created_at.slice(0,16) : '—')}</td>
+          </tr>`;
+      }).join('');
+  } else {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:4rem; color:var(--text-secondary)">No maintenance logs found.</td></tr>';
+  }
+}
+window.renderMaintenanceLogs = renderMaintenanceLogs;
+
+function resetMaintenanceFilters() {
+  document.getElementById('maintenance-search').value = '';
+  document.getElementById('maintenance-filter-status').value = '';
+  renderMaintenanceLogs();
+}
+window.resetMaintenanceFilters = resetMaintenanceFilters;
 
 /* ═══════════════════════════════════════════════════════
    SERIAL EDITING & HARDWARE
 ═══════════════════════════════════════════════════════ */
+
+function populateParentDropdown(selectId, excludeId = null) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const currentVal = sel.value;
+  
+  let optionsHtml = '<option value="">None (Independent Asset)</option>';
+  State.serials.forEach(s => {
+      if (excludeId && String(s.id) === String(excludeId)) return;
+      optionsHtml += `<option value="${s.id}">${escHtml(s.serial_number)} (${escHtml(s.product_name)})</option>`;
+  });
+  sel.innerHTML = optionsHtml;
+  sel.value = currentVal;
+}
 
 function openViewSerialModal(id) {
   const s = State.serials.find(x => x.id == id);
@@ -139,7 +279,30 @@ function openViewSerialModal(id) {
   
   document.getElementById('view-serial-sn').textContent = s.serial_number;
   document.getElementById('view-serial-prod').textContent = s.product_name || s.short_name || 'Asset';
+  document.getElementById('view-serial-status').innerHTML = getStatusBadge(s.status);
   
+  // Parent Asset Link
+  const parentWrap = document.getElementById('view-parent-wrap');
+  if (s.parent_id) {
+      parentWrap.style.display = 'block';
+      document.getElementById('view-parent-sn').textContent = s.parent_serial_number || 'S/N ' + s.parent_id;
+      
+      const parentAsset = State.serials.find(x => x.id == s.parent_id);
+      if (parentAsset) {
+          const parentUser = parentAsset.custom_fields?.user || 'Unassigned';
+          document.getElementById('view-parent-details').textContent = `${parentAsset.product_name} • Assigned to ${parentUser}`;
+      } else {
+          document.getElementById('view-parent-details').textContent = '';
+      }
+      
+      document.getElementById('view-parent-btn').onclick = () => {
+          closeModal('view-serial-modal');
+          openViewSerialModal(s.parent_id);
+      };
+  } else {
+      parentWrap.style.display = 'none';
+  }
+
   const cf = s.custom_fields || {};
   document.getElementById('view-user-name').textContent = cf.user || 'Unassigned Custodian';
   
@@ -148,30 +311,72 @@ function openViewSerialModal(id) {
   if (cf.department) parts.push(cf.department);
   document.getElementById('view-user-meta').textContent = parts.length ? parts.join(' • ') : 'No Dept / Role recorded';
   
-  const listCont = document.getElementById('view-components-list');
-  listCont.innerHTML = '';
+  document.getElementById('view-name').textContent = cf.name || '—';
+  document.getElementById('view-description').textContent = cf.description || 'No description recorded.';
   
-  if (cf.items && Array.isArray(cf.items) && cf.items.length) {
-    cf.items.forEach(item => {
-      const div = document.createElement('div');
-      div.style = 'padding:10px 14px; background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; text-align:left; display:flex; justify-content:space-between; align-items:center';
-      
-      let leftHtml = `<div style="font-weight:700; font-size:0.9rem; color:var(--text-primary)">${escHtml(item.name || 'Component')}</div>`;
-      if (item.details) leftHtml += `<div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px">${escHtml(item.details)}</div>`;
-      
-      let rightHtml = '';
-      if (item.sn) rightHtml = `<div style="font-family:monospace; font-size:0.8rem; font-weight:700; background:#ffffff; border:1px solid var(--border-color); padding:2px 8px; border-radius:6px; color:var(--accent)">S/N: ${escHtml(item.sn)}</div>`;
-      
-      div.innerHTML = `<div>${leftHtml}</div><div>${rightHtml}</div>`;
-      listCont.appendChild(div);
-    });
+  const snWrap = document.getElementById('view-serial-no-wrap');
+  if (cf.serial_no) {
+      document.getElementById('view-serial-no').textContent = cf.serial_no;
+      snWrap.style.display = 'inline-block';
   } else {
-    listCont.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.85rem">No custom hardware components documented.</div>';
+      snWrap.style.display = 'none';
   }
+
+  // Linked child assets (peripherals)
+  const childrenWrap = document.getElementById('view-children-wrap');
+  const childrenList = document.getElementById('view-children-list');
+  childrenList.innerHTML = '';
+  
+  const children = State.serials.filter(x => x.parent_id == s.id);
+  if (children.length > 0) {
+      childrenWrap.style.display = 'block';
+      children.forEach(child => {
+          const div = document.createElement('div');
+          div.style = 'padding:10px 14px; background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; text-align:left; display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;';
+          div.innerHTML = `
+              <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                      <strong style="font-size:0.9rem; color:var(--text-primary)">${escHtml(child.product_name)}</strong>
+                      <span style="font-family:monospace; font-size:0.75rem; font-weight:700; color:var(--accent)">${escHtml(child.serial_number)}</span>
+                      ${getStatusBadge(child.status)}
+                  </div>
+                  <div style="font-weight:600; font-size:0.85rem; color:var(--text-primary); margin-bottom:2px;">${escHtml(child.custom_fields?.name || '—')}</div>
+                  <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4">${escHtml(child.custom_fields?.description || '')}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="flex-shrink:0; margin-left:12px;" onclick="closeModal('view-serial-modal'); openViewSerialModal(${child.id})">View Asset</button>
+          `;
+          childrenList.appendChild(div);
+      });
+  } else {
+      childrenWrap.style.display = 'none';
+  }
+
+  // Maintenance History Logs
+  const histWrap = document.getElementById('view-maintenance-wrap');
+  const histList = document.getElementById('view-maintenance-history');
+  histList.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.85rem">Loading logs...</div>';
+  histWrap.style.display = 'block';
+  
+  api(`api/maintenance?serial_id=${s.id}`).then(d => {
+      if (d.success && d.logs && d.logs.length > 0) {
+          histList.innerHTML = d.logs.map(log => {
+              return `<div style="padding:10px 14px; background:#ffffff; border:1px solid var(--border-color); border-radius:10px; text-align:left; margin-bottom: 6px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                      ${getStatusBadge(log.status)}
+                      <span style="font-size:0.75rem; color:var(--text-secondary)">${escHtml(log.created_at ? log.created_at.slice(0,16) : '')}</span>
+                  </div>
+                  <div style="font-size:0.85rem; color:var(--text-primary); line-height:1.4">${escHtml(log.note)}</div>
+              </div>`;
+          }).join('');
+      } else {
+          histList.innerHTML = '<div style="text-align:center; padding:1.25rem; color:var(--text-secondary); font-size:0.85rem">No maintenance history recorded yet.</div>';
+      }
+  });
   
   document.getElementById('view-created-at').textContent = s.created_at ? 'Generated on ' + s.created_at : '';
   openModal('view-serial-modal');
 }
+window.openViewSerialModal = openViewSerialModal;
 
 function openEditSerialModal(id) {
   const s = State.serials.find(x => x.id == id);
@@ -180,98 +385,72 @@ function openEditSerialModal(id) {
   document.getElementById('edit-serial-id').value = s.id;
   document.getElementById('edit-serial-sn').textContent = s.serial_number;
   
+  populateParentDropdown('edit-parent', s.id);
+  document.getElementById('edit-parent').value = s.parent_id || '';
+  
   const cf = s.custom_fields || {};
+  document.getElementById('edit-name').value = cf.name || '';
+  document.getElementById('edit-serial-no').value = cf.serial_no || '';
+  document.getElementById('edit-description').value = cf.description || '';
   document.getElementById('edit-user').value = cf.user || '';
   document.getElementById('edit-desig').value = cf.designation || '';
   document.getElementById('edit-dept').value = cf.department || '';
   
-  const container = document.getElementById('edit-hardware-items-container');
-  container.innerHTML = '';
+  document.getElementById('edit-status').value = s.status || 'In Stock';
+  document.getElementById('edit-maintenance-note').value = '';
   
-  if (cf.items && Array.isArray(cf.items)) {
-    cf.items.forEach(item => addEditHardwareItem(item));
-  }
+  updateEditCustodianVisibility();
+  updateEditMaintenanceNoteVisibility();
   
   openModal('edit-serial-modal');
 }
-
-function addHardwareItem(containerId = 'hardware-items-container', data = {}) {
-  const container = document.getElementById(containerId);
-  const div = document.createElement('div');
-  div.className = 'hardware-item-row';
-  div.style = 'background:#f8fafc; border:1px solid var(--border-color); border-radius:12px; padding:1.25rem; margin-bottom:1rem; position:relative;';
-  
-  const name = data.name || '';
-  const details = data.details || '';
-  const sn = data.sn || '';
-
-  div.innerHTML = `
-    <button type="button" class="action-icon" style="position:absolute; top:8px; right:8px; color:#ef4444" onclick="this.parentElement.remove()"><i class="bi bi-x-circle"></i></button>
-    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px">
-      <div class="form-group" style="margin:0">
-        <label style="font-size:0.7rem">Component Name</label>
-        <input type="text" class="h-name" placeholder="CPU, Monitor..." value="${escHtml(name)}" required>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label style="font-size:0.7rem">Specifications</label>
-        <input type="text" class="h-details" placeholder="i7, 16GB..." value="${escHtml(details)}">
-      </div>
-      <div class="form-group" style="margin:0">
-        <label style="font-size:0.7rem">Device S/N</label>
-        <input type="text" class="h-sn" placeholder="Manufacturer S/N" value="${escHtml(sn)}">
-      </div>
-    </div>
-  `;
-  container.appendChild(div);
-}
-
-function addEditHardwareItem(data = {}) {
-  addHardwareItem('edit-hardware-items-container', data);
-}
+window.openEditSerialModal = openEditSerialModal;
 
 async function saveSerialEdit() {
   const id = document.getElementById('edit-serial-id').value;
+  const parent_id = document.getElementById('edit-parent').value;
+  const name = document.getElementById('edit-name').value;
+  const serial_no = document.getElementById('edit-serial-no').value;
+  const description = document.getElementById('edit-description').value;
   const user = document.getElementById('edit-user').value;
   const designation = document.getElementById('edit-desig').value;
   const department = document.getElementById('edit-dept').value;
   
-  const itemRows = document.querySelectorAll('#edit-hardware-items-container .hardware-item-row');
-  const items = [];
-  itemRows.forEach(row => {
-      const name = row.querySelector('.h-name').value;
-      const details = row.querySelector('.h-details').value;
-      const sn = row.querySelector('.h-sn').value;
-      if (name) items.push({name, details, sn});
-  });
+  const status = document.getElementById('edit-status').value;
+  const maintenance_note = document.getElementById('edit-maintenance-note').value;
 
-  const custom_fields = { user, designation, department, items };
+  const custom_fields = { name, description, serial_no, user, designation, department };
   const btn = document.getElementById('save-edit-btn');
   btn.disabled = true;
-  const d = await api('api/serials', 'PUT', {id, custom_fields});
+  const d = await api('api/serials', 'POST', {id, parent_id, custom_fields, status, maintenance_note});
   btn.disabled = false;
   
   if (d.success) {
-      const s = State.serials.find(x => x.id == id);
-      if (s) s.custom_fields = custom_fields;
+      const sd = await api('api/serials');
+      if (sd.success) {
+          State.serials = sd.serials || [];
+      }
       closeModal('edit-serial-modal');
       const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
       if (TAB_LOADERS[activeTab]) TAB_LOADERS[activeTab]();
-      showToast('Serial updated successfully.');
+      showToast('Asset updated successfully.');
   } else {
       showToast(d.message, 'error');
   }
 }
+window.saveSerialEdit = saveSerialEdit;
 
 async function deleteSerial(id) {
-  if (!confirm('Permanently delete this serial number?')) return;
+  if (!confirm('Permanently delete this asset?')) return;
   const d = await api('api/serials', 'DELETE', {id});
   if (d.success) {
     State.serials = State.serials.filter(s => s.id !== id);
     const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
     if (TAB_LOADERS[activeTab]) TAB_LOADERS[activeTab]();
-    showToast('Serial deleted successfully.');
+    showToast('Asset deleted successfully.');
   } else showToast(d.message, 'error');
 }
+window.deleteSerial = deleteSerial;
 
 /* ═══════════════════════════════════════════════════════
    PRODUCTS
@@ -279,11 +458,20 @@ async function deleteSerial(id) {
 function renderProductTable() {
   const tbody = document.getElementById('product-tbody');
   if (!State.products.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary)">No products defined yet.</td></tr>'; return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary)">No asset types defined yet.</td></tr>'; return;
   }
-  tbody.innerHTML = State.products.map(p => `
+  tbody.innerHTML = State.products.map(p => {
+    const icon = p.icon || 'bi-box-seam';
+    return `
     <tr>
-      <td style="font-weight:700">${escHtml(p.name)}</td>
+      <td style="font-weight:700">
+        <span style="display:inline-flex; align-items:center; gap:8px">
+          <span style="width:32px; height:32px; border-radius:8px; background:rgba(0, 207, 232, 0.1); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0">
+            <i class="bi ${icon}" style="font-size:1rem; color:var(--accent)"></i>
+          </span>
+          ${escHtml(p.name)}
+        </span>
+      </td>
       <td><span class="btn btn-ghost btn-sm" style="pointer-events:none">${escHtml(p.short_name)}</span></td>
       <td><span style="font-weight:800; color:var(--accent)">${p.serial_count}</span></td>
       <td style="color:var(--text-secondary)">${escHtml(p.created_at ? p.created_at.slice(0,10) : '—')}</td>
@@ -293,27 +481,47 @@ function renderProductTable() {
           <button class="action-icon" style="color:#ef4444" onclick="deleteProduct(${p.id})"><i class="bi bi-trash"></i></button>
         </div>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
+function openAddProductModal() {
+  document.getElementById('prod-id').value = '';
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-short').value = '';
+  document.getElementById('prod-icon').value = 'bi-box-seam';
+  updateIconPreview('bi-box-seam');
+  document.getElementById('product-modal-title').textContent = 'Create Asset Type';
+  document.getElementById('prod-btn').textContent = 'Create Asset Type';
+  openModal('product-modal');
+}
+window.openAddProductModal = openAddProductModal;
+
 function editProduct(id) {
-  const p = State.products.find(x => x.id == id);
-  if (!p) return;
+  console.log("editProduct called with ID:", id);
+  const p = State.products.find(x => String(x.id) === String(id));
+  if (!p) {
+      console.warn("Asset Type not found for ID:", id);
+      return;
+  }
+  const icon = p.icon || 'bi-box-seam';
   document.getElementById('prod-id').value = p.id;
   document.getElementById('prod-name').value = p.name;
   document.getElementById('prod-short').value = p.short_name;
-  document.getElementById('prod-btn').textContent = 'Update Product';
-  document.getElementById('prod-cancel-btn').style.display = 'inline-block';
-  switchTab('products');
-  const form = document.getElementById('product-form');
-  if (form) form.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('prod-icon').value = icon;
+  updateIconPreview(icon);
+  document.getElementById('product-modal-title').textContent = 'Edit Asset Type';
+  document.getElementById('prod-btn').textContent = 'Update Asset Type';
+  openModal('product-modal');
 }
+window.editProduct = editProduct;
 
 function renderCreateProducts() {
     const sel = document.getElementById('create-product');
     if (!sel) return;
-    sel.innerHTML = '<option value="">Choose a product...</option>' + 
+    sel.innerHTML = '<option value="">Choose an asset type...</option>' + 
         State.products.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+    populateParentDropdown('create-parent');
 }
 
 async function handleProductSubmit(e) {
@@ -321,12 +529,13 @@ async function handleProductSubmit(e) {
   const id = document.getElementById('prod-id').value;
   const name = document.getElementById('prod-name').value;
   const short_name = document.getElementById('prod-short').value;
+  const icon = document.getElementById('prod-icon').value || 'bi-box-seam';
   
   const btn = document.getElementById('prod-btn');
-  const method = id ? 'PUT' : 'POST';
+  const method = 'POST';
   
   btn.disabled = true;
-  const d = await api('api/products', method, { id, name, short_name });
+  const d = await api('api/products', method, { id, name, short_name, icon });
   btn.disabled = false;
   
   if (d.success) {
@@ -335,33 +544,27 @@ async function handleProductSubmit(e) {
       if (idx !== -1) {
         State.products[idx].name = name;
         State.products[idx].short_name = short_name;
+        State.products[idx].icon = icon;
       }
     } else {
       State.products.unshift(d.product);
     }
-    cancelProductEdit();
+    closeModal('product-modal');
     renderProductTable();
-    showToast(id ? 'Product updated.' : 'Product created.');
+    showToast(id ? 'Asset type updated.' : 'Asset type created.');
   } else showToast(d.message, 'error');
 }
 
-function cancelProductEdit() {
-  document.getElementById('prod-id').value = '';
-  document.getElementById('prod-name').value = '';
-  document.getElementById('prod-short').value = '';
-  document.getElementById('prod-btn').textContent = 'Create Product';
-  document.getElementById('prod-cancel-btn').style.display = 'none';
-}
-
 async function deleteProduct(id) {
-    if (!confirm('Delete this product and all associated serials?')) return;
+    if (!confirm('Delete this asset type and all associated assets?')) return;
     const d = await api('api/products', 'DELETE', {id});
     if (d.success) {
         State.products = State.products.filter(p => p.id != id);
         renderProductTable();
-        showToast('Product deleted.');
+        showToast('Asset type deleted.');
     } else showToast(d.message, 'error');
 }
+window.deleteProduct = deleteProduct;
 
 /* ═══════════════════════════════════════════════════════
    PRINT & QR
@@ -370,15 +573,19 @@ function renderPrintGrid() {
   const fsel = document.getElementById('filter-product');
   if (!fsel) return;
   const currentFilter = fsel.value;
-  fsel.innerHTML = '<option value="">All Products</option>' +
+  fsel.innerHTML = '<option value="">All Asset Types</option>' +
     State.products.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
   if (currentFilter) fsel.value = currentFilter;
   fsel.onchange = renderPrintGrid;
 
   const pid   = fsel.value;
-  const list  = pid ? State.serials.filter(s => String(s.product_id) === pid) : State.serials;
+  let list  = pid ? State.serials.filter(s => String(s.product_id) === pid) : State.serials;
+  
+  // Only print assets that are parent/independent (parent_id is null)
+  list = list.filter(s => s.parent_id === null);
+
   const grid  = document.getElementById('print-grid');
-  if (!list.length) { grid.innerHTML = '<p style="text-align:center; padding:4rem; color:var(--text-secondary)">No serials to print.</p>'; return; }
+  if (!list.length) { grid.innerHTML = '<p style="text-align:center; padding:4rem; color:var(--text-secondary)">No assets to print.</p>'; return; }
   
   grid.innerHTML = '';
   list.forEach(s => {
@@ -430,9 +637,9 @@ function resetAllFilters() {
 function handleGlobalSearch(input) {
     const search = input.value.toLowerCase();
     if (search.length > 2) {
-        document.querySelector('.tab-btn[data-tab="allserials"]').click();
-        document.getElementById('all-search').value = search;
-        renderAllSerials();
+        document.querySelector('.tab-btn[data-tab="assetlist"]').click();
+        document.getElementById('assetlist-search').value = search;
+        renderAssetList();
     }
 }
 
@@ -486,10 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Product form
     const prodForm = document.getElementById('product-form');
     if (prodForm) prodForm.addEventListener('submit', handleProductSubmit);
-    
-    const cancelProdBtn = document.getElementById('prod-cancel-btn');
-    if (cancelProdBtn) cancelProdBtn.addEventListener('click', cancelProductEdit);
-
     // Generate Serial Logic
     const genBtn = document.getElementById('generate-btn');
     const createProdSel = document.getElementById('create-product');
@@ -508,61 +711,116 @@ document.addEventListener('DOMContentLoaded', () => {
             previewWrap.style.display = 'block';
             document.getElementById('serial-preview').textContent = 'Loading...';
             
-            // Preview next sequential serial
-            const d = await api(`api/serials?preview_next=1&product_id=${pid}`);
+            const parentId = document.getElementById('create-parent').value;
+            const d = await api(`api/serials?preview_next=1&product_id=${pid}&parent_id=${parentId}`);
             if (d.success) {
                 document.getElementById('serial-preview').textContent = d.next_serial;
             }
         });
     }
 
+    const createParentSel = document.getElementById('create-parent');
+    if (createParentSel) {
+        createParentSel.addEventListener('change', () => {
+            const pId = createParentSel.value;
+            updateCreateCustodianVisibility();
+            if (pId) {
+                const parent = State.serials.find(x => String(x.id) === String(pId));
+                if (parent) {
+                    const cf = parent.custom_fields || {};
+                    document.getElementById('create-user').value = cf.user || '';
+                    document.getElementById('create-desig').value = cf.designation || '';
+                    document.getElementById('create-dept').value = cf.department || '';
+                }
+            } else {
+                document.getElementById('create-user').value = '';
+                document.getElementById('create-desig').value = '';
+                document.getElementById('create-dept').value = '';
+            }
+            if (createProdSel && createProdSel.value) {
+                createProdSel.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
+    const createStatusSel = document.getElementById('create-status');
+    if (createStatusSel) {
+        createStatusSel.addEventListener('change', () => {
+            updateCreateCustodianVisibility();
+        });
+    }
+
+    // Call initially to hide custodian fields for default status 'In Stock'
+    updateCreateCustodianVisibility();
+
+    const editParentSel = document.getElementById('edit-parent');
+    if (editParentSel) {
+        editParentSel.addEventListener('change', () => {
+            const pId = editParentSel.value;
+            updateEditCustodianVisibility();
+            if (pId) {
+                const parent = State.serials.find(x => String(x.id) === String(pId));
+                if (parent) {
+                    const cf = parent.custom_fields || {};
+                    document.getElementById('edit-user').value = cf.user || '';
+                    document.getElementById('edit-desig').value = cf.designation || '';
+                    document.getElementById('edit-dept').value = cf.department || '';
+                }
+            }
+        });
+    }
+
+    const editStatusSel = document.getElementById('edit-status');
+    if (editStatusSel) {
+        editStatusSel.addEventListener('change', () => {
+            updateEditCustodianVisibility();
+            updateEditMaintenanceNoteVisibility();
+        });
+    }
+
     if (genBtn) {
         genBtn.addEventListener('click', async () => {
             const pid = createProdSel.value;
-            const user = document.getElementById('create-user').value;
-            const designation = document.getElementById('create-desig').value;
-            const department = document.getElementById('create-dept').value;
+            const parent_id = document.getElementById('create-parent').value;
+            const name = document.getElementById('create-name').value;
+            const serial_no = document.getElementById('create-serial-no').value;
+            const description = document.getElementById('create-description').value;
+            const user = parent_id ? '' : document.getElementById('create-user').value;
+            const designation = parent_id ? '' : document.getElementById('create-desig').value;
+            const department = parent_id ? '' : document.getElementById('create-dept').value;
             
-            if (!user) { showToast('User name is required.', 'error'); return; }
-            
-            const itemRows = document.querySelectorAll('#hardware-items-container .hardware-item-row');
-            const items = [];
-            itemRows.forEach(row => {
-                const name = row.querySelector('.h-name').value;
-                const details = row.querySelector('.h-details').value;
-                const sn = row.querySelector('.h-sn').value;
-                if (name) items.push({name, details, sn});
-            });
+            const custom_fields = { name, description, serial_no, user, designation, department };
+            const status = document.getElementById('create-status').value;
 
-            const custom_fields = { user, designation, department, items };
-            
             genBtn.disabled = true;
             genBtn.textContent = 'Generating...';
             
-            const d = await api('api/serials', 'POST', { product_id: pid, custom_fields });
+            const d = await api('api/serials', 'POST', { product_id: pid, parent_id, custom_fields, status });
             
             genBtn.disabled = false;
             genBtn.textContent = 'Generate & Save Asset';
             
             if (d.success) {
-                State.serials.unshift(d.serial);
+                const sd = await api('api/serials');
+                if (sd.success) {
+                    State.serials = sd.serials || [];
+                } else {
+                    State.serials.unshift(d.serial);
+                }
                 showToast('Asset generated successfully!');
                 
-                // Show result
-                document.getElementById('generate-result').style.display = 'block';
-                document.getElementById('result-serial').textContent = d.serial.serial_number;
-                const qrRes = document.getElementById('result-qr');
-                qrRes.innerHTML = '';
-                new QRCode(qrRes, {
-                    text: SCAN_BASE + '/scan?s=' + d.serial.id,
-                    width: 160, height: 160
-                });
+
                 
                 // Clear form
+                document.getElementById('create-name').value = '';
+                document.getElementById('create-serial-no').value = '';
+                document.getElementById('create-description').value = '';
                 document.getElementById('create-user').value = '';
                 document.getElementById('create-desig').value = '';
                 document.getElementById('create-dept').value = '';
-                document.getElementById('hardware-items-container').innerHTML = '';
+                document.getElementById('create-parent').value = '';
+                document.getElementById('create-status').value = 'In Stock';
+                updateCreateCustodianVisibility();
                 
                 // Trigger preview refresh for next one
                 createProdSel.dispatchEvent(new Event('change'));
