@@ -219,6 +219,8 @@ tr:hover td { background: #f8fafc; }
 input:checked + .slider { background-color: var(--accent); }
 input:checked + .slider:before { transform: translateX(20px); }
 
+
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
   .sidebar { transform: translateX(-100%); }
@@ -349,4 +351,38 @@ input:checked + .slider:before { transform: translateX(20px); }
     display: block !important;
   }
   .qr-preview-card:has(.qr-select:not(:checked)) { display: none !important; }
+}
+
+/* Autocomplete Combobox Container */
+.autocomplete-wrap {
+  position: relative;
+}
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-top: 4px;
+  display: none;
+}
+.autocomplete-suggestion-item {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+.autocomplete-suggestion-item:hover,
+.autocomplete-suggestion-item.highlighted {
+  background: var(--border-light);
 }

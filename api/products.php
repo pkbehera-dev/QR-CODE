@@ -15,28 +15,51 @@ if ($method === 'GET') {
          FROM products p WHERE p.user_id = ? ORDER BY p.created_at DESC"
     );
     $stmt->execute([$uid]);
-    json_out(true, ['products' => $stmt->fetchAll()]);
+    $products = $stmt->fetchAll();
+    // Ensure icon has a default
+    foreach ($products as &$p) {
+        if (empty($p['icon'])) $p['icon'] = 'bi-box-seam';
+    }
+    json_out(true, ['products' => $products]);
 }
 
-/* ── POST: add product ──────────────────────────────── */
+/* ── POST: add product or update ─────────────────────── */
 if ($method === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
+    $pid   = (int)($input['id'] ?? 0);
     $name  = trim($input['name'] ?? '');
     $short = strtoupper(trim($input['short_name'] ?? ''));
+    $icon  = trim($input['icon'] ?? 'bi-box-seam');
 
-    if (!$name || !$short) json_out(false, [], 'Name and short name required.');
-    if (!preg_match('/^[A-Z0-9]+$/', $short)) json_out(false, [], 'Short name: letters/digits only.');
+    if ($pid > 0) {
+        if (!$name || !$short) json_out(false, [], 'Name and short name required.');
+        if (!preg_match('/^[A-Z0-9]+$/', $short)) json_out(false, [], 'Short name: letters/digits only.');
 
-    $stmt = $pdo->prepare("INSERT INTO products (user_id, name, short_name) VALUES (?, ?, ?)");
-    $stmt->execute([$uid, $name, $short]);
-    $id = $pdo->lastInsertId();
-    json_out(true, ['product' => [
-        'id' => $id,
-        'name' => $name,
-        'short_name' => $short,
-        'serial_count' => 0,
-        'created_at' => date('Y-m-d H:i:s')
-    ]]);
+        // Verify ownership
+        $chk = $pdo->prepare("SELECT id FROM products WHERE id = ? AND user_id = ?");
+        $chk->execute([$pid, $uid]);
+        if (!$chk->fetch()) json_out(false, [], 'Not found.');
+
+        $stmt = $pdo->prepare("UPDATE products SET name = ?, short_name = ?, icon = ? WHERE id = ?");
+        $stmt->execute([$name, $short, $icon, $pid]);
+        
+        json_out(true, [], 'Product updated.');
+    } else {
+        if (!$name || !$short) json_out(false, [], 'Name and short name required.');
+        if (!preg_match('/^[A-Z0-9]+$/', $short)) json_out(false, [], 'Short name: letters/digits only.');
+
+        $stmt = $pdo->prepare("INSERT INTO products (user_id, name, short_name, icon) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$uid, $name, $short, $icon]);
+        $id = $pdo->lastInsertId();
+        json_out(true, ['product' => [
+            'id' => $id,
+            'name' => $name,
+            'short_name' => $short,
+            'icon' => $icon,
+            'serial_count' => 0,
+            'created_at' => date('Y-m-d H:i:s')
+        ]]);
+    }
 }
 
 /* ── PUT: update product ────────────────────────────── */
@@ -45,6 +68,7 @@ if ($method === 'PUT') {
     $pid   = (int)($input['id'] ?? 0);
     $name  = trim($input['name'] ?? '');
     $short = strtoupper(trim($input['short_name'] ?? ''));
+    $icon  = trim($input['icon'] ?? 'bi-box-seam');
 
     if (!$pid || !$name || !$short) json_out(false, [], 'ID, Name, and Short name required.');
     if (!preg_match('/^[A-Z0-9]+$/', $short)) json_out(false, [], 'Short name: letters/digits only.');
@@ -54,8 +78,8 @@ if ($method === 'PUT') {
     $chk->execute([$pid, $uid]);
     if (!$chk->fetch()) json_out(false, [], 'Not found.');
 
-    $stmt = $pdo->prepare("UPDATE products SET name = ?, short_name = ? WHERE id = ?");
-    $stmt->execute([$name, $short, $pid]);
+    $stmt = $pdo->prepare("UPDATE products SET name = ?, short_name = ?, icon = ? WHERE id = ?");
+    $stmt->execute([$name, $short, $icon, $pid]);
     
     json_out(true, [], 'Product updated.');
 }
