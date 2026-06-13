@@ -105,10 +105,9 @@ if ($method === 'POST') {
             $stmt->execute([json_encode($fields), $new_status, $sid]);
         }
 
-        if ($new_status !== $old_status || !empty($note)) {
-            $log_note = !empty($note) ? $note : "Status updated from '{$old_status}' to '{$new_status}'";
+        if (!empty($note)) {
             $log_stmt = $pdo->prepare("INSERT INTO maintenance_logs (serial_id, status, note) VALUES (?, ?, ?)");
-            $log_stmt->execute([$sid, $new_status, $log_note]);
+            $log_stmt->execute([$sid, $new_status, $note]);
         }
 
         propagate_custodian_to_children($pdo, $sid, $uid, $fields);
@@ -181,8 +180,7 @@ if ($method === 'POST') {
         }
     }
 
-    $log_stmt = $pdo->prepare("INSERT INTO maintenance_logs (serial_id, status, note) VALUES (?, ?, ?)");
-    $log_stmt->execute([$new_id, $status, "Asset generated with status '{$status}'."]);
+
 
     $parent_serial_number = null;
     if ($parent_id) {
@@ -256,10 +254,9 @@ if ($method === 'PUT') {
         $stmt->execute([json_encode($fields), $new_status, $sid]);
     }
 
-    if ($new_status !== $old_status || !empty($note)) {
-        $log_note = !empty($note) ? $note : "Status updated from '{$old_status}' to '{$new_status}'";
+    if (!empty($note)) {
         $log_stmt = $pdo->prepare("INSERT INTO maintenance_logs (serial_id, status, note) VALUES (?, ?, ?)");
-        $log_stmt->execute([$sid, $new_status, $log_note]);
+        $log_stmt->execute([$sid, $new_status, $note]);
     }
 
     propagate_custodian_to_children($pdo, $sid, $uid, $fields);

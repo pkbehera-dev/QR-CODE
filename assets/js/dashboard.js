@@ -240,6 +240,12 @@ async function renderMaintenanceLogs() {
               <td>${getStatusBadge(log.status)}</td>
               <td style="max-width:300px; word-break:break-word">${escHtml(log.note)}</td>
               <td style="color:var(--text-secondary)">${escHtml(log.created_at ? log.created_at.slice(0,16) : '—')}</td>
+              <td style="text-align:right">
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end">
+                  <button class="action-icon" onclick="openEditLogModal(${log.id}, ${JSON.stringify(log.note).replace(/"/g, '&quot;')}, '${log.status}')" title="Edit Log"><i class="bi bi-pencil-square"></i></button>
+                  <button class="action-icon" style="color:#ef4444" onclick="deleteLog(${log.id})" title="Delete Log"><i class="bi bi-trash"></i></button>
+                </div>
+              </td>
           </tr>`;
       }).join('');
   } else {
@@ -363,7 +369,11 @@ function openViewSerialModal(id) {
               return `<div style="padding:10px 14px; background:#ffffff; border:1px solid var(--border-color); border-radius:10px; text-align:left; margin-bottom: 6px;">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                       ${getStatusBadge(log.status)}
-                      <span style="font-size:0.75rem; color:var(--text-secondary)">${escHtml(log.created_at ? log.created_at.slice(0,16) : '')}</span>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                          <span style="font-size:0.75rem; color:var(--text-secondary)">${escHtml(log.created_at ? log.created_at.slice(0,16) : '')}</span>
+                          <button class="action-icon" style="padding:2px; font-size:0.85rem;" onclick="closeModal('view-serial-modal'); openEditLogModal(${log.id}, ${JSON.stringify(log.note).replace(/"/g, '&quot;')}, '${log.status}')" title="Edit Log"><i class="bi bi-pencil-square"></i></button>
+                          <button class="action-icon" style="color:#ef4444; padding:2px; font-size:0.85rem;" onclick="closeModal('view-serial-modal'); deleteLog(${log.id})" title="Delete Log"><i class="bi bi-trash"></i></button>
+                      </div>
                   </div>
                   <div style="font-size:0.85rem; color:var(--text-primary); line-height:1.4">${escHtml(log.note)}</div>
               </div>`;
@@ -516,12 +526,134 @@ function editProduct(id) {
 }
 window.editProduct = editProduct;
 
+function setupAutocomplete(inputId, searchInputId, suggestionsId, dataCallback, onSelectCallback) {
+    const input = document.getElementById(inputId);
+    const searchInput = document.getElementById(searchInputId);
+    const suggestionsWrap = document.getElementById(suggestionsId);
+    if (!input || !searchInput || !suggestionsWrap) return;
+
+    let highlightedIndex = -1;
+    let filteredData = [];
+
+    function renderSuggestions() {
+        const query = searchInput.value.toLowerCase().trim();
+        filteredData = dataCallback(query);
+
+        if (filteredData.length === 0) {
+            suggestionsWrap.innerHTML = '<div style="padding:10px; color:var(--text-secondary); font-size:0.85rem; text-align:center;">No matches found</div>';
+        } else {
+            suggestionsWrap.innerHTML = filteredData.map((item, idx) => {
+                return `<div class="autocomplete-suggestion-item${idx === highlightedIndex ? ' highlighted' : ''}" data-id="${item.id}" data-index="${idx}">
+                    ${item.icon ? `<i class="bi ${item.icon}" style="color:var(--accent)"></i>` : ''}
+                    <span>${escHtml(item.label)}</span>
+                </div>`;
+            }).join('');
+        }
+        suggestionsWrap.style.display = 'block';
+    }
+
+    searchInput.addEventListener('focus', () => {
+        highlightedIndex = -1;
+        renderSuggestions();
+    });
+
+    searchInput.addEventListener('input', () => {
+        highlightedIndex = -1;
+        renderSuggestions();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+        const items = suggestionsWrap.querySelectorAll('.autocomplete-suggestion-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIndex = (highlightedIndex + 1) % filteredData.length;
+            renderSuggestions();
+            scrollIntoView();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIndex = (highlightedIndex - 1 + filteredData.length) % filteredData.length;
+            renderSuggestions();
+            scrollIntoView();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && highlightedIndex < filteredData.length) {
+                selectItem(filteredData[highlightedIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+        }
+    });
+
+    function scrollIntoView() {
+        const activeItem = suggestionsWrap.querySelector('.autocomplete-suggestion-item.highlighted');
+        if (activeItem) {
+            activeItem.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    suggestionsWrap.addEventListener('click', (e) => {
+        const itemEl = e.target.closest('.autocomplete-suggestion-item');
+        if (itemEl) {
+            const idx = parseInt(itemEl.dataset.index, 10);
+            selectItem(filteredData[idx]);
+        }
+    });
+
+    function selectItem(item) {
+        input.value = item.id;
+        searchInput.value = item.label;
+        closeDropdown();
+        
+        input.dispatchEvent(new Event('change'));
+        if (onSelectCallback) onSelectCallback(item);
+    }
+
+    function closeDropdown() {
+        suggestionsWrap.style.display = 'none';
+        highlightedIndex = -1;
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !suggestionsWrap.contains(e.target)) {
+            closeDropdown();
+            if (input.value === '') {
+                searchInput.value = '';
+            } else {
+                const allData = dataCallback('');
+                const selected = allData.find(x => String(x.id) === String(input.value));
+                if (selected) {
+                    searchInput.value = selected.label;
+                } else {
+                    searchInput.value = '';
+                }
+            }
+        }
+    });
+}
+window.setupAutocomplete = setupAutocomplete;
+
 function renderCreateProducts() {
-    const sel = document.getElementById('create-product');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Choose an asset type...</option>' + 
-        State.products.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
-    populateParentDropdown('create-parent');
+    setupAutocomplete(
+        'create-product', 
+        'create-product-search', 
+        'create-product-suggestions',
+        (query) => {
+            return State.products
+                .filter(p => p.name.toLowerCase().includes(query) || p.short_name.toLowerCase().includes(query))
+                .map(p => ({ id: p.id, label: `${p.name} (${p.short_name})`, icon: p.icon || 'bi-box-seam' }));
+        }
+    );
+
+    setupAutocomplete(
+        'create-parent', 
+        'create-parent-search', 
+        'create-parent-suggestions',
+        (query) => {
+            return State.serials
+                .filter(s => s.serial_number.toLowerCase().includes(query) || (s.custom_fields?.name || '').toLowerCase().includes(query))
+                .map(s => ({ id: s.id, label: `${s.serial_number} - ${s.custom_fields?.name || s.product_name}` }));
+        }
+    );
 }
 
 async function handleProductSubmit(e) {
@@ -819,6 +951,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('create-desig').value = '';
                 document.getElementById('create-dept').value = '';
                 document.getElementById('create-parent').value = '';
+                document.getElementById('create-parent-search').value = '';
+                document.getElementById('create-product').value = '';
+                document.getElementById('create-product-search').value = '';
                 document.getElementById('create-status').value = 'In Stock';
                 updateCreateCustodianVisibility();
                 
@@ -933,5 +1068,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    const editLogForm = document.getElementById('edit-log-form');
+    if (editLogForm) {
+        editLogForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveLogEdit();
+        });
+    }
 });
+
+function openEditLogModal(logId, currentNote, currentStatus) {
+  document.getElementById('edit-log-id').value = logId;
+  document.getElementById('edit-log-status').value = currentStatus || 'In Stock';
+  document.getElementById('edit-log-note').value = currentNote || '';
+  openModal('edit-log-modal');
+}
+window.openEditLogModal = openEditLogModal;
+
+async function saveLogEdit() {
+  const id = document.getElementById('edit-log-id').value;
+  const status = document.getElementById('edit-log-status').value;
+  const note = document.getElementById('edit-log-note').value;
+  
+  const btn = document.getElementById('edit-log-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  const d = await api('api/maintenance', 'PUT', { id, status, note });
+  btn.disabled = false;
+  btn.textContent = 'Save Changes';
+  
+  if (d.success) {
+      closeModal('edit-log-modal');
+      showToast('Maintenance log updated.');
+      
+      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+      if (activeTab === 'maintenance') {
+          renderMaintenanceLogs();
+      }
+  } else {
+      showToast(d.message, 'error');
+  }
+}
+window.saveLogEdit = saveLogEdit;
+
+async function deleteLog(id) {
+  if (!confirm('Permanently delete this maintenance log?')) return;
+  const d = await api('api/maintenance', 'DELETE', { id });
+  if (d.success) {
+      showToast('Maintenance log deleted.');
+      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+      if (activeTab === 'maintenance') {
+          renderMaintenanceLogs();
+      }
+  } else {
+      showToast(d.message, 'error');
+  }
+}
+window.deleteLog = deleteLog;
 

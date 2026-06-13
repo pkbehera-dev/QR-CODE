@@ -211,17 +211,21 @@ $u_count = $current_serials_count->fetchColumn();
         <div id="create-msg"></div>
         
         <div class="form-group">
-          <label for="create-product">Asset Type</label>
-          <select id="create-product" required>
-            <option value="">Loading asset types…</option>
-          </select>
+          <label for="create-product-search">Asset Type</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="create-product-search" placeholder="Type to search asset type..." autocomplete="off" required>
+            <input type="hidden" id="create-product" value="">
+            <div id="create-product-suggestions" class="autocomplete-suggestions"></div>
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="create-parent">Parent Asset (Optional)</label>
-          <select id="create-parent">
-            <option value="">None (Independent Asset)</option>
-          </select>
+          <label for="create-parent-search">Parent Asset (Optional)</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="create-parent-search" placeholder="Type to search parent serial..." autocomplete="off">
+            <input type="hidden" id="create-parent" value="">
+            <div id="create-parent-suggestions" class="autocomplete-suggestions"></div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -333,10 +337,11 @@ $u_count = $current_serials_count->fetchColumn();
                 <th>Logged Status</th>
                 <th>Maintenance Note</th>
                 <th>Date Logged</th>
+                <th style="width:100px; text-align:right">Actions</th>
               </tr>
             </thead>
             <tbody id="maintenance-tbody">
-              <tr><td colspan="6" style="text-align:center; padding:3rem; color:var(--text-secondary)">Loading logs...</td></tr>
+              <tr><td colspan="7" style="text-align:center; padding:3rem; color:var(--text-secondary)">Loading logs...</td></tr>
             </tbody>
           </table>
         </div>
@@ -620,6 +625,37 @@ $u_count = $current_serials_count->fetchColumn();
       <div style="display:flex; gap:1rem; margin-top:2rem">
         <button type="button" class="btn btn-ghost" style="flex:1" onclick="closeModal('product-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary" style="flex:1.5" id="prod-btn">Save Asset Type</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Maintenance Log Modal -->
+<div class="modal-overlay" id="edit-log-modal">
+  <div class="modal-card" style="max-width: 450px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+      <h2 style="font-size:1.3rem; font-weight:800">Edit Maintenance Log</h2>
+      <button class="action-icon" style="background:none; border:none" onclick="closeModal('edit-log-modal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <form id="edit-log-form">
+      <input type="hidden" id="edit-log-id" value="">
+      <div class="form-group">
+        <label for="edit-log-status">Logged Status</label>
+        <select id="edit-log-status">
+          <option value="In Stock">In Stock</option>
+          <option value="Active">Active</option>
+          <option value="Breakdown">Breakdown</option>
+          <option value="Under Repair">Under Repair</option>
+          <option value="Retired">Retired</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="edit-log-note">Maintenance Note</label>
+        <textarea id="edit-log-note" required rows="4" style="width:100%; border:1px solid var(--border-color); border-radius:8px; padding:10px; font-family:inherit; resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex; gap:1rem; margin-top:2rem">
+        <button type="button" class="btn btn-ghost" style="flex:1" onclick="closeModal('edit-log-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:1.5" id="edit-log-btn">Save Changes</button>
       </div>
     </form>
   </div>

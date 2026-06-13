@@ -57,4 +57,59 @@ if ($method === 'GET') {
     }
 }
 
+if ($method === 'PUT') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $log_id = (int)($input['id'] ?? 0);
+    $status = trim($input['status'] ?? '');
+    $note = trim($input['note'] ?? '');
+
+    if (!$log_id) json_out(false, [], 'Log ID required.');
+    if ($note === '') json_out(false, [], 'Maintenance note cannot be empty.');
+
+    // Verify ownership of the log
+    $stmt = $pdo->prepare(
+        "SELECT m.id FROM maintenance_logs m 
+         JOIN serials s ON m.serial_id = s.id 
+         WHERE m.id = ? AND s.user_id = ?"
+    );
+    $stmt->execute([$log_id, $uid]);
+    if (!$stmt->fetch()) {
+        json_out(false, [], 'Log not found or access denied.');
+    }
+
+    try {
+        $up = $pdo->prepare("UPDATE maintenance_logs SET status = ?, note = ? WHERE id = ?");
+        $up->execute([$status, $note, $log_id]);
+        json_out(true, [], 'Maintenance log updated.');
+    } catch (PDOException $e) {
+        json_out(false, [], "Database error: " . $e->getMessage());
+    }
+}
+
+if ($method === 'DELETE') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $log_id = (int)($input['id'] ?? 0);
+
+    if (!$log_id) json_out(false, [], 'Log ID required.');
+
+    // Verify ownership of the log
+    $stmt = $pdo->prepare(
+        "SELECT m.id FROM maintenance_logs m 
+         JOIN serials s ON m.serial_id = s.id 
+         WHERE m.id = ? AND s.user_id = ?"
+    );
+    $stmt->execute([$log_id, $uid]);
+    if (!$stmt->fetch()) {
+        json_out(false, [], 'Log not found or access denied.');
+    }
+
+    try {
+        $del = $pdo->prepare("DELETE FROM maintenance_logs WHERE id = ?");
+        $del->execute([$log_id]);
+        json_out(true, [], 'Maintenance log deleted.');
+    } catch (PDOException $e) {
+        json_out(false, [], "Database error: " . $e->getMessage());
+    }
+}
+
 json_out(false, [], 'Method not allowed.');
